@@ -1,0 +1,535 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="index.css" />
+        <script src="lib/gltfutils.js"></script>
+        <script src="lib/b3d4api.js"></script>
+        <script src="lib/modelviewer.js"></script>
+        <script src="config.js"></script>
+    </head>
+
+    <body>
+        <div id="main">
+            <div class="page home process" id="home-page">
+                <div class="page process center">
+                    <h1>Processing</h1>
+                    <h3>system is processing the head model...</h3>
+                </div>
+                <div id="home" class="content">
+                    <h2 class="page home">Bellus3D ARC SDK Sample Scan App</h2>
+                    <h3 class="page home">Camera Status</h3>
+                    <div id="camera-status" class="camera-grid scan">
+                        <table>
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td>
+                                    <span id="camera-u1"><img /></span>
+                                </td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span id="camera-l2"><img /></span>
+                                </td>
+                                <td>
+                                    <span id="camera-l1"><img /></span>
+                                </td>
+                                <td>
+                                    <span id="camera-c"><img /></span>
+                                </td>
+                                <td>
+                                    <span id="camera-r1"><img /></span>
+                                </td>
+                                <td>
+                                    <span id="camera-r2"><img /></span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td>
+                                    <span id="camera-d1"><img /></span>
+                                </td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="page home buttons">
+                        <button id="start-station" onclick="apiStationStart();">Start Station</button>
+                        <button id="refresh-cameras" onclick="apiCameraStatus();">Refresh Cameras</button>
+                        <br />
+                        <button id="start-preview" onclick="showPage('preview');" disabled>ARC 3D Face Scan</button>
+                    </div>
+                    <div class="page home vspacer"></div>
+                    <div class="page home note">
+                        <p>This sample app demonstrates the use of Bellus3D's ARC Developer's API (websocket):</p>
+                        <ul>
+                            <li>Preview Streaming</li>
+                            <li>Scan Recording and Processing</li>
+                            <li>View GLB Result</li>
+                            <li>Save Head Model Files</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="page preview">
+                <div id="previewing" class="center">
+                    <h1>Preview Camera</h1>
+                    <h4>click "preview/pause" to start/stop camera streaming</h4>
+                    <h4>click "record" to start a scan</h4>
+                </div>
+                <div id="recording" class="hide center">
+                    <h1>Cameras are recording</h1>
+                    <h3>Please look at the camera and hold still for a few seconds...</h3>
+                </div>
+                <div id="preview-canvas">
+                    <div class="wrapper">
+                        <img class="canvas" width="240" height="320" />
+                        <img class="oval red" src="assets/centering-oval.png" />
+                        <img class="oval green" src="assets/centering-oval-green.png" />
+                    </div>
+                    <div class="buttons">
+                        <button id="toggle-preview" onclick="apiPreviewToggle();">Preview</button>
+                        <button id="start-process" onclick="apiScanRecord();">Record</button>
+                        <br />
+                        <button onclick="showPage('home');apiPreviewStop();">Cancel</button>
+                    </div>
+                </div>
+            </div>
+            <div class="page model">
+                <h1 class="center">Result</h1>
+                <div id="web-viewer"></div>
+                <div class="buttons">
+                    <button id="go-back-to-preview" onclick="showPage('preview');">Go Back</button>
+                    <button id="save-model" onclick="saveModel();">Save Model</button>
+                </div>
+            </div>
+            <div id="bottom">
+                <div id="notification">
+                    <div class="content"></div>
+                </div>
+            </div>
+            <div id="curtain" class="hide"></div>
+        </div>
+
+        <!--  -->
+        <!--  -->
+        <!-- window onload -->
+        <!--  -->
+        <!--  -->
+        <script>
+            window.onload = () => {
+                // show initial page
+                showPage("home");
+                showMessage("message", `connecting to '${window.config.host}'...`);
+                // start dev api conversation
+                apiInit(window.config.host);
+            };
+        </script>
+
+        <!--  -->
+        <!--  -->
+        <!-- Developer SDK API calls -->
+        <!--  -->
+        <!--  -->
+        <script>
+            let { B3d4api } = window;
+
+            // create dev API instance
+            let b3d4api = null;
+            let startTime = null;
+            let currentScanId = null;
+
+            // init API instance,
+            // mainly setting up event handlers
+            const apiInit = async host => {
+                b3d4api = new B3d4api(host);
+
+                // handle dev API connection events
+                b3d4api.onConnectionClose(event => {
+                    let msg = `connection error: code ${event.code}`;
+                    showMessage("error", msg);
+                });
+
+                //
+                // handle dev API host notifications
+                //
+
+                // receive camera snap GLTF frames
+                b3d4api.onNotification("camera_snap", msg => {
+                    let { camera, frame, device_id } = msg;
+                    if (frame) {
+                        drawCameraSnapJpegBlob(camera, device_id, frame);
+                    } else {
+                        showMessage("error", `camera sensor busy. camera device_id "${device_id}"`);
+                    }
+                });
+
+                // receive camera streaming GLTF frames
+                b3d4api.onNotification("camera_frame", msg => {
+                    let { camera, frame, tracking } = msg;
+                    drawCameraStreamingFrameJpegBlob(camera, frame, tracking);
+                });
+
+                // receive camera status json notifications
+                b3d4api.onNotification("camera_status", msg => {
+                    let { camera, device_id, connected } = msg;
+
+                    if (camera) {
+                        if (connected) {
+                            // highlight the newly connected camera and get a snapshot of it
+                            document.querySelector(`#camera-${camera}`).classList.add("connected");
+                            apiCameraSnap(camera);
+                        } else {
+                            // grey out the disconnected camera
+                            document.querySelector(`#camera-${camera}`).classList.remove("connected");
+                            showMessage("error", `camera '${camera}' disconnected`);
+                        }
+                    }
+                });
+
+                // receive scan process progress notifications
+                b3d4api.onNotification("process_progress", msg => {
+                    let { message, progress } = msg;
+                    showMessage("message", `processing [${message}]...<br/>${showProgress(progress, 200)}`);
+                });
+
+                // call a series of APIs to init the session,
+                // each b3d4api function call sends out a websocket dev api request,
+                // in this example we send:
+                // (1) session_init
+                // (2) station_list
+                // (3) station_select
+                //
+                // note that step (2) or (3) is NOT required
+                // if the host is already running with the desired station config.
+                //
+                try {
+                    let { session_id } = await b3d4api.connect();
+                    let { client } = await b3d4api.sessionInit(window.config.credentials);
+                    let { default_station_id } = await b3d4api.stationList();
+                    // by default, when host service starts,
+                    // the last configured station will be selected automatically
+                    // call stationSelect api only when
+                    // await b3d4api.stationSelect(default_station_id);
+                    await b3d4api.cameraStatus();
+
+                    // update UI
+                    showMessage(
+                        "success",
+                        `connected! server '${window.config.host}', <br/>session '${session_id}', <br/>client '${
+                            client ? client.client_name : "null"
+                        }'`,
+                        "ok",
+                        null,
+                        false
+                    );
+
+                    let startPreviewButton = document.querySelector("#start-preview");
+                    if (startPreviewButton) {
+                        startPreviewButton.disabled = false;
+                    }
+                } catch (e) {
+                    showMessage("error", `connection failed, message: ${parseError(e)}`, "ok", null, false);
+                }
+            };
+
+            const apiCameraSnap = async (camera, deviceId = null) => {
+                await b3d4api.cameraSnap(camera, deviceId);
+            };
+
+            const apiCameraStatus = async () => {
+                await b3d4api.cameraStatus();
+            };
+
+            const apiStationStart = async () => {
+                // note that the API station_start accepts an optional argument of "restart_cameras",
+                // the default value is false.
+                // if set to true, the API will force restart all camera clients,
+                // this is especially useful if the any cameras went into unexpected wrong status.
+                await b3d4api
+                    .stationStart(false)
+                    .then(() => {
+                        showMessage("message", `station is ready for a scan!`);
+                    })
+                    .catch(e => {
+                        showMessage(
+                            "error",
+                            `start station failed, checked if all cameras connected to USB hub. try reconfig station if this issue retains`,
+                            "ok",
+                            null,
+                            false
+                        );
+                    });
+            };
+
+            let isPreviewing = false;
+            const apiPreviewToggle = async () => {
+                return isPreviewing ? apiPreviewStop() : apiPreviewStart();
+            };
+
+            let previewTimeout = null;
+            const apiPreviewStart = async () => {
+                if (!isPreviewing) {
+                    try {
+                        await b3d4api.previewStart();
+                        isPreviewing = true;
+                        document.querySelector("#toggle-preview").innerHTML = "Pause";
+                        // set a timeout for streaming
+                        // to avoid letting the camera stay in streaming state
+                        previewTimeout = window.setTimeout(() => {
+                            previewTimeout = null;
+                            apiPreviewStop();
+                            showMessage("message", `streaming timed out. click "preview" to resume`, "ok", null, false);
+                        }, 60000);
+                    } catch (e) {
+                        showMessage("error", `start preview failed, message: ${parseError(e)}`, "ok", null, false);
+                    }
+                }
+            };
+
+            const apiPreviewStop = async () => {
+                if (isPreviewing) {
+                    if (previewTimeout) {
+                        window.clearTimeout(previewTimeout);
+                        previewTimeout = null;
+                    }
+                    try {
+                        await b3d4api.previewStop();
+                        isPreviewing = false;
+                        document.querySelector("#toggle-preview").innerHTML = "Preview";
+                    } catch (e) {
+                        showMessage("error", `stop preview failed, message: ${parseError(e)}`, "ok", null, false);
+                    }
+                }
+            };
+
+            const apiScanRecord = async () => {
+                await apiPreviewStop();
+
+                startTime = new Date();
+                showMessage(
+                    "message",
+                    `camera is recording, please hold still or move your head (following the instructions shown in our official ARC Scan App)...`
+                );
+                document.querySelector("#previewing").classList.add("hide");
+                document.querySelector("#recording").classList.remove("hide");
+
+                // send request and upon response received, automatically start recording
+                try {
+                    let { scan_id } = await b3d4api.scanRecord("FACE"); // we use "FACE" mode here
+                    currentScanId = scan_id;
+                    let duration = ((new Date() - startTime) / 1000).toFixed(2);
+                    document.querySelector("#start-process").disabled = false;
+                    showMessage("message", `record completed! Took ${duration} seconds.`, "ok", null, false);
+
+                    // automatically start recording...
+                    await apiScanProcess(scan_id);
+                } catch (e) {
+                    showMessage("error", `record failed, message: ${parseError(e)}`, "ok", null, false);
+                }
+            };
+
+            const apiScanProcess = async scanId => {
+                startTime = new Date();
+                showMessage("message", `processing buffer to produce head model...`);
+                showPage("process");
+
+                // send request and upon response received, render the model
+                try {
+                    // to get a better scan result,
+                    // if a Bellus3D dental bite plate is used during the scan, please
+                    // include the dental bite plate ID in the scan_process Dev API request.
+                    //
+                    // Bellus3D dental bite plates are stored under /config/dental-bite-plates folder.
+                    // Also, b3d4api.dentalBitePlateList() will return a list of available plates,
+                    // Each labeled by an unique plate ID.
+                    let { model, info } = await b3d4api.scanProcess(
+                        scanId,
+                        null // dental bite plate ID, if dental bite plate is used
+                    );
+                    // release the scan after model produced
+                    await b3d4api.scanRelease(scanId);
+
+                    // show the result
+                    let duration = ((new Date() - startTime) / 1000).toFixed(2);
+                    let { glb } = model;
+                    glb = new Blob([new Uint8Array(glb.data)]);
+                    showMessage(
+                        "message",
+                        `head model processed successful! Took ${duration} seconds.`,
+                        "ok",
+                        null,
+                        false
+                    );
+                    showPage("model");
+                    showModel(glb);
+                } catch (e) {
+                    showMessage("error", `process scan failed, message: ${parseError(e)}`, "ok", null, false);
+                }
+            };
+
+            const apiModelSave = async (scanId, format, resolution, smoothing, path) => {
+                try {
+                    showMessage("message", `saving model, please wait...`, "ok", null, true);
+
+                    await b3d4api.premiumFeaturesEnable();
+
+                    // VERY IMPORTANT NOTE:
+                    // this API is expecting an non-exist folder path, the API will always create that folder.
+                    // if an existing folder path is passed, to avoid any conflicting files,
+                    // the API will create a new folder with a suffix in the folder name.
+                    let { model_file_path } = await b3d4api.modelSave(
+                        scanId,
+                        path, // if path is empty, Dev API will return a zip file in memory
+                        "headscan",
+                        format,
+                        resolution,
+                        smoothing,
+                        false, // watertight
+                        true, // face landmark
+                        true, // ear  landmark
+                        null // model orientation, available options are "yz", "zy", "zY", see documentation
+                    );
+                    showMessage("message", `Model file saved: ${model_file_path}`, "ok");
+                } catch (e) {
+                    showMessage("error", `saving head model failed, error: ${parseError(e)}`);
+                }
+            };
+        </script>
+
+        <!--  -->
+        <!--  -->
+        <!-- UI utilities -->
+        <!--  -->
+        <!--  -->
+        <script>
+            // parse error
+            const parseError = e => {
+                if (typeof e === "object" && e.error) e = e.error;
+                return typeof e === "object" ? (e.message ? e.message : JSON.stringify(e)) : e;
+            };
+
+            // show different dom elements for different pages
+            const showPage = page => {
+                document.querySelectorAll(".page").forEach(ele => {
+                    if (ele.classList.contains(page)) {
+                        ele.classList.add("show");
+                    } else {
+                        ele.classList.remove("show");
+                    }
+                });
+                if (page === "preview") {
+                    document.querySelector("#previewing").classList.remove("hide");
+                    document.querySelector("#recording").classList.add("hide");
+                    // automatically start preview on entering the record page
+                    apiPreviewStart();
+                }
+            };
+
+            // prompt messages from API
+            const showMessage = (type, message, buttonText, buttonClick, block) => {
+                let content = `<div class="title ${type}">${type}</div>`;
+                content += message;
+                buttonText = buttonText ? buttonText : "ok";
+                content += `<div class="center"><button id="notification-button">${buttonText}</button></div>`;
+                document.querySelector("#notification .content").innerHTML = content;
+                document.querySelector("#notification-button").addEventListener("click", buttonClick);
+                document.querySelector("#notification-button").addEventListener("click", () => {
+                    document.querySelector("#notification").classList.remove("show");
+                });
+                document.querySelector("#notification").className = `show ${type}`;
+
+                // control the curtain
+                if (block) {
+                    document.querySelector("#curtain").classList.remove("hide");
+                } else {
+                    document.querySelector("#curtain").classList.add("hide");
+                }
+            };
+
+            // show progrogress bar while processing model
+            const showProgress = (progress, width) => {
+                let p = progress.toFixed(2).replace(/\.00$|0$/, "");
+                let width1 = ((width * p) / 100).toFixed(0);
+                return `
+    <div class="progress-bar">
+        <div class="progress" style="width:${width1}px"><div style="width:${width}px">${p}%</div></div>
+        <div class="total" style="width:${width}px"><div style="width:${width}px">${p}%</div></div>
+    </div>
+    `;
+            };
+
+            // show model in a 3D viewer
+            const showModel = blob => {
+                let url = URL.createObjectURL(blob);
+                document.querySelector("#web-viewer").innerHTML = "";
+                window.webViewer.init("#web-viewer");
+                window.webViewer.showModel("glb", url, "", "");
+            };
+
+            // show camera snap frame
+            const drawCameraSnapJpegBlob = (camera, deviceId, frameBlob) => {
+                let url = URL.createObjectURL(frameBlob);
+
+                // if this frame comes with a camera position (in scan app)
+                if (camera) {
+                    document.querySelector(`#camera-${camera} img`).src = url;
+                }
+            };
+
+            // show camera stream frame
+            const drawCameraStreamingFrameJpegBlob = (camera, frameBlob, tracking) => {
+                // update streaming frame
+                let url = URL.createObjectURL(frameBlob);
+                document.querySelector(`#preview-canvas .canvas`).src = url;
+
+                // determine if head is in right position (fit in the oval)
+                let rightPosition = false;
+                if (tracking && tracking["FACE"]) {
+                    let range = window.config.tracking;
+                    let { facerect, distance } = tracking["FACE"];
+
+                    // check facerect if available
+                    if (facerect) {
+                        let { x, y, width, height } = facerect;
+                        let x1 = parseFloat(x);
+                        let y1 = parseFloat(y);
+                        let x2 = x1 + parseFloat(width);
+                        let y2 = y1 + parseFloat(height);
+                        if (x1 >= range.x[0] && x2 <= range.x[1] && y1 >= range.y[0] && y2 <= range.y[1]) {
+                            rightPosition = true;
+                        }
+                    }
+
+                    // check distance if available
+                    if (distance) {
+                        let { z } = distance;
+                        if (z < range.z[0] || z > range.z[1]) {
+                            rightPosition = false;
+                        }
+                    }
+                }
+
+                // update tracking oval
+                if (rightPosition) {
+                    document.querySelector("#preview-canvas .wrapper").classList.add("right-position");
+                } else {
+                    document.querySelector("#preview-canvas .wrapper").classList.remove("right-position");
+                }
+            };
+
+            const saveModel = () => {
+                let folder = window.prompt("Enter absolute path of folder to save this model, e.g. C:\\models");
+                if (folder && currentScanId) {
+                    // file format: "obj"
+                    // resolution: "HD"
+                    // smoothing level: 5
+                    apiModelSave(currentScanId, "obj", "HD", 5, folder);
+                }
+            };
+        </script>
+    </body>
+</html>

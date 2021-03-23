@@ -1,0 +1,376 @@
+@charset "utf-8";
+
+* {
+    /* margin: 0px;
+    padding: 0px; */
+    font-family: "Nunito", sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+    text-align: center;
+}
+
+body {
+    font-size: 100%;
+}
+
+button {
+    cursor: pointer;
+    padding: 5px;
+}
+
+button:disabled {
+    cursor: not-allowed;
+}
+
+#main {
+    margin: 20px auto;
+    color: black;
+}
+
+.buttons {
+    text-align: center;
+}
+
+.center {
+    text-align: center;
+}
+
+.page {
+    display: none;
+}
+
+.page.show {
+    display: inherit;
+}
+
+.vspacer {
+    height: 30px;
+}
+
+.note {
+    font-size: 0.8em;
+}
+
+.hide {
+    display: none;
+}
+
+#camera-u1,
+#camera-d1 {
+    transform: rotate(-90deg);
+}
+
+.camera-grid table {
+    width: 250px;
+    margin: 5px auto;
+}
+
+.camera-grid span {
+    display: block;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 5px;
+    background: #ccc;
+}
+
+.camera-grid span.connected {
+    background: #333;
+}
+
+.camera-grid.scan span::after {
+    content: "🚫";
+    position: absolute;
+    left: 24px;
+    top: 35px;
+    z-index: 1000;
+    font-size: 20px;
+    opacity: 0.3;
+}
+
+.camera-grid span img {
+    width: 72px;
+    height: 96px;
+    opacity: 0.2;
+}
+
+.camera-grid span.connected::after {
+    display: none;
+}
+
+.camera-grid span.connected img,
+.camera-grid span.positioned img {
+    border: 1px solid #008000;
+    opacity: 1;
+}
+
+#bottom {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+}
+
+#notification {
+    display: none;
+    background: #eee;
+    border-top: 2px solid #aaa;
+}
+
+#notification.show {
+    display: inherit;
+}
+
+#notification .error {
+    color: red;
+}
+
+#notification .title {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+#notification .content {
+    font-size: 0.8em;
+    max-width: 1000px;
+    margin: auto;
+    padding: 10px 30px;
+    height: 140px;
+    overflow-y: scroll;
+}
+
+#notification-button {
+    font-size: 0.8em;
+    height: 26px;
+}
+
+#notification.error .content .title::after {
+    content: "If the problem persists, please try restarting this page. Make sure your client credentials are correct, station is correctly configured through Configure App, and double check your USB physical connection to cameras.";
+    display: block;
+    color: red;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+#curtain {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 9998;
+    background: #000;
+    opacity: 0.5;
+}
+
+/* 
+ *
+ *
+ *
+ * styles for the scan App
+ *
+ *
+ *
+ */
+
+#home-page {
+    margin-top: 30px;
+    text-align: center;
+}
+
+#home-page.for-home .processing {
+    display: none;
+}
+
+#home-page.for-processing .home {
+    display: none;
+}
+
+#home-page .content {
+    max-width: 500px;
+    margin: auto;
+}
+
+#home-page .content h3 {
+    font-size: 1em;
+}
+
+#home-page .content h2 {
+    margin: 10px auto;
+}
+
+#home-page .content ul {
+    max-width: 200px;
+    margin: 10px auto;
+    text-align: left;
+    padding-left: 20px;
+}
+
+#recording {
+    text-align: center;
+}
+
+#preview-canvas {
+    /* width:240px; */
+    margin: auto;
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+}
+
+#preview-canvas .wrapper {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    overflow: hidden;
+    display: inline-block;
+    width: 240px;
+    height: 320px;
+    position: relative;
+}
+
+#preview-canvas .wrapper * {
+    display: block;
+}
+
+#preview-canvas .canvas {
+    width: 240px;
+    height: 320px;
+    transform: scaleX(-1);
+}
+
+#preview-canvas .oval {
+    position: absolute;
+    left: 25%;
+    top: 20%;
+    display: block;
+    opacity: 0.5;
+    height: 55%;
+}
+
+#preview-canvas .oval.green {
+    display: none;
+}
+
+#preview-canvas .right-position .oval.green {
+    display: block;
+}
+
+#preview-canvas .right-position .oval.red {
+    display: none;
+}
+
+.progress-bar {
+    display: inline-block;
+    position: relative;
+    border: 1px solid #bbb;
+    margin-left: 10px;
+}
+
+.progress-bar > div {
+    display: block;
+    overflow: hidden;
+}
+
+.progress-bar > div > div {
+    display: block;
+    text-align: center;
+}
+
+.progress-bar > div.progress {
+    overflow: hidden;
+    position: absolute;
+    z-index: 1000;
+}
+
+.progress-bar > div.progress > div {
+    background: #008000;
+    color: white;
+}
+
+.progress-bar > div.total > div {
+    background: white;
+    color: #666;
+}
+
+#web-viewer {
+    width: 400px;
+    height: 400px;
+}
+
+#web-viewer canvas {
+    width: 400px;
+    height: 400px;
+}
+
+/* 
+ *
+ *
+ *
+ * styles for the station-configure App
+ *
+ *
+ *
+ */
+
+#camera-list-page {
+    padding: 5rem 0 0;
+    text-align: center;
+}
+
+#camera-list {
+    margin: 2rem auto;
+    width: 200px;
+    height: 200px;
+    overflow-y: scroll;
+    border: 1px solid grey;
+}
+
+#set-camera-positions .camera-grid span img {
+    opacity: 0.8;
+}
+
+#set-camera-positions #camera-u1 img,
+#set-camera-positions #camera-d1 img {
+    transform: rotate(90deg);
+}
+
+#set-camera-positions #camera-u1.positioned img,
+#set-camera-positions #camera-d1.positioned img {
+    transform: rotate(0);
+}
+
+#set-camera-positions .current-layout {
+    color: #ff0000;
+}
+
+#set-camera-positions .current-layout.valid {
+    color: #008000;
+}
+
+#camera-snaps {
+    text-align: center;
+}
+
+#unpositioned-camera-snaps {
+    display: inline-block;
+    height: 130px;
+    min-width: 500px;
+    border: 1px solid grey;
+    padding-inline-start: 0;
+}
+
+#unpositioned-camera-snaps li {
+    list-style: none;
+    display: inline-block;
+    margin: 5px;
+}
+
+#unpositioned-camera-snaps img {
+    width: 90px;
+}

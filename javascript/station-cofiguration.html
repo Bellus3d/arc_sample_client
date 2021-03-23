@@ -1,0 +1,488 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="index.css" />
+        <script src="lib/gltfutils.js"></script>
+        <script src="lib/b3d4api.js"></script>
+        <script src="config.js"></script>
+    </head>
+
+    <body>
+        <div id="main">
+            <div class="page camera-list" id="camera-list-page">
+                <h3>Cameras connected on USB</h3>
+                <ul class="camera-list" id="camera-list"></ul>
+                <p>
+                    Click "Refresh Camera List" first, <br />station configuration will only be allowed when there are
+                    cameras connected to USB.
+                </p>
+                <div class="buttons">
+                    <button onclick="apiCameraList();">Refresh Camera List</button>
+                    <button
+                        id="station-configure-start"
+                        onclick="showPage('set-camera-positions'); apiStationConfigureStart();"
+                        disabled
+                    >
+                        Start Station Configuration
+                    </button>
+                    <br />
+                    <br />
+                    <button onclick="apiCameraRegistrationQuery();">Query Camera Registration</button>
+                    <button onclick="apiCameraRegistrationAdd();">Register Camera</button>
+                    <button onclick="apiCameraUpdate();">Update Cameras</button>
+                </div>
+            </div>
+
+            <div class="page set-camera-positions" id="set-camera-positions-page">
+                <h3>Set Camera Positions</h3>
+                <div id="set-camera-positions" class="content">
+                    <div id="camera-status" class="camera-grid configure">
+                        <table>
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td>
+                                    <span id="camera-u1" class="droppable"><img /></span>
+                                </td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <span id="camera-l2" class="droppable"><img /></span>
+                                </td>
+                                <td>
+                                    <span id="camera-l1" class="droppable"><img /></span>
+                                </td>
+                                <td>
+                                    <span id="camera-c" class="droppable"><img /></span>
+                                </td>
+                                <td>
+                                    <span id="camera-r1" class="droppable"><img /></span>
+                                </td>
+                                <td>
+                                    <span id="camera-r2" class="droppable"><img /></span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td>
+                                    <span id="camera-d1" class="droppable"><img /></span>
+                                </td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <h3>
+                        Current positioned layout:
+                        <span class="current-layout">Invalid</span>
+                    </h3>
+                    <h3>Please drag each photo to the correct camera position.</h3>
+                    <div id="camera-snaps">
+                        <ul id="unpositioned-camera-snaps"></ul>
+                    </div>
+                    <div class="buttons">
+                        <button onclick="apiCameraStatus();">Refresh Camera Snaps</button>
+                        <button id="finish-configuration" onclick="apiStationConfigureFinish();" disabled>
+                            Finish Station Configuration
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="bottom">
+                <div id="notification">
+                    <div class="content"></div>
+                </div>
+            </div>
+            <div id="curtain" class="hide"></div>
+        </div>
+
+        <!--  -->
+        <!--  -->
+        <!-- window onload -->
+        <!--  -->
+        <!--  -->
+        <script>
+            window.onload = () => {
+                // show initial page
+                showPage("camera-list");
+                showMessage("message", `connecting to '${window.config.host}'...`);
+                initDroppables();
+                // start dev api conversation
+                apiInit(window.config.host);
+            };
+        </script>
+
+        <!--  -->
+        <!--  -->
+        <!-- Developer SDK API calls -->
+        <!--  -->
+        <!--  -->
+        <script>
+            let { B3d4api } = window;
+
+            // create dev API instance
+            let b3d4api = null;
+            let currentLayout = null;
+            let cameraList = [];
+            let cameraPositions = {};
+
+            // init API instance,
+            // mainly setting up event handlers
+            const apiInit = async host => {
+                b3d4api = new B3d4api(host);
+
+                // handle dev API connection events
+                b3d4api.onConnectionClose(event => {
+                    let msg = `connection error: code ${event.code}`;
+                    showMessage("error", msg);
+                });
+
+                //
+                // handle dev API host notifications
+                //
+
+                // receive camera snap GLTF frames
+                b3d4api.onNotification("camera_snap", msg => {
+                    let { camera, frame, device_id } = msg;
+                    if (frame) {
+                        drawCameraSnapJpegBlob(camera, device_id, frame);
+                    } else {
+                        showMessage("error", `camera sensor busy. camera device_id "${device_id}"`);
+                    }
+                });
+
+                // receive camera status json notifications
+                b3d4api.onNotification("camera_status", msg => {
+                    let { camera, device_id, connected } = msg;
+
+                    // request a camera snap if connected
+                    if (connected) {
+                        apiCameraSnap(null, device_id);
+                    }
+                });
+
+                // call session_init to init the SDK session
+                try {
+                    let { session_id } = await b3d4api.connect();
+                    let { client } = await b3d4api.sessionInit(window.config.credentials);
+
+                    // update UI
+                    showMessage(
+                        "message",
+                        `connected!<br/>server: '${window.config.host}'<br/>session: '${session_id}'<br/>client: '${
+                            client ? client.client_name : "null"
+                        }'`,
+                        "ok",
+                        null,
+                        false
+                    );
+                } catch (e) {
+                    showMessage("error", `connection failed, message: ${parseError(e)}`, "ok", null, false);
+                }
+            };
+
+            const apiCameraSnap = async (camera, deviceId) => {
+                if (deviceId) {
+                    await b3d4api.cameraSnap(camera, deviceId);
+                }
+            };
+
+            const apiCameraStatus = async () => {
+                await b3d4api.cameraStatus();
+                document.querySelector("#unpositioned-camera-snaps").innerHTML = "";
+
+                // also reset some state
+                currentLayout = null;
+                cameraPositions = {};
+                initDroppables();
+            };
+
+            //
+            // station-configure api calls
+            //
+
+            const apiCameraList = async () => {
+                try {
+                    let { cameras } = await b3d4api.cameraList();
+                    document.querySelector("#camera-list").innerHTML = "";
+                    document.querySelector("#station-configure-start").disabled = true;
+                    cameraList = [];
+                    for (let deviceId in cameras) {
+                        cameraList.push(deviceId);
+                        let ele = document.createElement("li");
+                        ele.innerHTML = deviceId;
+                        document.querySelector("#camera-list").appendChild(ele);
+                        document.querySelector("#station-configure-start").disabled = false;
+                    }
+                } catch (e) {
+                    showMessage("error", `query camera list failed, error: ${parseError(e)}`, "ok", null, false);
+                }
+            };
+
+            const apiStationConfigureStart = async () => {
+                document.querySelector("#unpositioned-camera-snaps").innerHTML = "";
+                showMessage("message", `starting station configuration, please wait...`, null, null, true);
+
+                // send the request...
+                await b3d4api
+                    .stationConfigureStart(cameraList)
+                    .then(() => {
+                        showMessage("message", `ready for setting camera positions.`, "ok", null, false);
+                    })
+                    .catch(e => {
+						showPage("camera-list");
+                        showMessage(
+                            "error",
+                            `start station configuration failed, error: ${parseError(e)}`,
+                            "ok",
+                            null,
+                            false
+                        );
+                    });
+            };
+
+            const apiStationConfigureFinish = async () => {
+                let stationName = window.prompt(
+                    "Provide a station name:",
+                    `Station [${currentLayout}] ${parseInt(Math.random() * 1000)}`
+                );
+
+                showMessage("message", `creating new station, please wait...`, null, null, true);
+
+                // set camera rotations for u1, d1 camera, if applicable
+                //
+                // very important note
+                //
+                // a t4 layout does not necessarily have to have a rotated bottom camera,
+                // and a cross7 layout does not imply rotated top and bottom cameras as well,
+                // instead, the camera rotations are determined by the ARC frame design.
+                // in this sample App,
+                // we assume an original platic ARC frame,
+                // which has rotated top/bottom cameras for ARC4 (t4) and ARC7 (cross7).
+                let cameraRotations =
+                    currentLayout === "cross7" ? { u1: 90, d1: 90 } : currentLayout === "t4" ? { d1: 90 } : {};
+
+                // send the request...
+                await b3d4api
+                    .stationConfigureFinish(stationName, currentLayout, cameraPositions, cameraRotations)
+                    .then(() => {
+                        showMessage(
+                            "success",
+                            `new station configured succesfully! you may close this page now.`,
+                            null,
+                            null,
+                            true
+                        );
+                    })
+                    .catch(e => {
+                        showMessage("error", `configure station failed, error: ${parseError(e)}.`, "ok", null, false);
+                    });
+            };
+
+            const apiCameraRegistrationQuery = async () => {
+                // prompt to enter device ID
+                let deviceId = prompt("Enter camera Device ID:");
+
+                if (deviceId) {
+                    try {
+                        showMessage("message", `querying camera registration...`, null, null, true);
+                        let { camera_registration } = await b3d4api.cameraRegistrationQuery(deviceId);
+                        showMessage(
+                            "success",
+                            `camera registrion information for ${deviceId}: <hr/>${JSON.stringify(camera_registration)}`
+                        );
+                    } catch (e) {
+                        showMessage("error", `query camera registrion failed: <hr/>${parseError(e)}`);
+                    }
+                }
+            };
+
+            const apiCameraRegistrationAdd = async () => {
+                // prompt to enter device ID
+                let deviceId = prompt("Enter camera Device ID:");
+
+                if (deviceId) {
+                    try {
+                        showMessage("message", `registering camera...`, null, null, true);
+                        let { camera_registration } = await b3d4api.cameraRegistrationAdd(deviceId);
+                        showMessage(
+                            "success",
+                            `registered camera ${deviceId}: <hr/>${JSON.stringify(camera_registration)}`
+                        );
+                    } catch (e) {
+                        showMessage("error", `register camera failed: <hr/>${parseError(e)}`, null, null, false);
+                    }
+                }
+            };
+
+            const apiCameraUpdate = async () => {
+                let confirmed = confirm(
+                    "Update all camera clients?\nThis operation is safe, the Host will not do anything if cameras are already up to date."
+                );
+
+                if (confirmed) {
+                    try {
+                        showMessage("message", `updating cameras...`, null, null, true);
+                        let response = await b3d4api.cameraUpdate();
+                        showMessage("success", `api response: <hr/>${JSON.stringify(response)}`);
+                    } catch (e) {
+                        showMessage("error", `update cameras failed: <hr/>${parseError(e)}`, null, null, false);
+                    }
+                }
+            };
+        </script>
+
+        <!--  -->
+        <!--  -->
+        <!-- UI utilities -->
+        <!--  -->
+        <!--  -->
+        <script>
+            // parse error
+            const parseError = e => {
+                if (typeof e === "object" && e.error) e = e.error;
+                return typeof e === "object" ? (e.message ? e.message : JSON.stringify(e)) : e;
+            };
+
+            // show different dom elements for different pages
+            const showPage = page => {
+                document.querySelectorAll(".page").forEach(ele => {
+                    if (ele.classList.contains(page)) {
+                        ele.classList.add("show");
+                    } else {
+                        ele.classList.remove("show");
+                    }
+                });
+                if (page === "preview") {
+                    document.querySelector("#previewing").classList.remove("hide");
+                    document.querySelector("#recording").classList.add("hide");
+                    // automatically start preview on entering the record page
+                    apiPreviewStart();
+                }
+            };
+
+            // prompt messages from API
+            const showMessage = (type, message, buttonText, buttonClick, block) => {
+                let content = `<div class="title ${type}">${type}</div>`;
+                content += message;
+                buttonText = buttonText ? buttonText : "ok";
+                content += `<div class="center"><button id="notification-button">${buttonText}</button></div>`;
+                document.querySelector("#notification .content").innerHTML = content;
+                document.querySelector("#notification-button").addEventListener("click", buttonClick);
+                document.querySelector("#notification-button").addEventListener("click", () => {
+                    document.querySelector("#notification").classList.remove("show");
+                });
+                document.querySelector("#notification").className = `show ${type}`;
+
+                // control the curtain
+                if (block) {
+                    document.querySelector("#curtain").classList.remove("hide");
+                } else {
+                    document.querySelector("#curtain").classList.add("hide");
+                }
+            };
+
+            // show camera snap frame
+            const drawCameraSnapJpegBlob = (camera, deviceId, frameBlob) => {
+                let url = URL.createObjectURL(frameBlob);
+
+                // skip if already exists
+                let exists = !!document.querySelector(`img[device-id="${deviceId}"]`);
+                if (exists) return;
+
+                let ele = document.createElement("li");
+                ele.innerHTML = `<img src="${url}" device-id="${deviceId}" draggable="true" />`;
+
+                // set drag event handler
+                ele.ondragstart = e => {
+                    e.dataTransfer.setData("text", deviceId);
+                };
+
+                document.querySelector("#unpositioned-camera-snaps").appendChild(ele);
+            };
+
+            // init droppable positions
+            const initDroppables = () => {
+                document.querySelectorAll("#camera-status.camera-grid .droppable").forEach(element => {
+                    // get position
+                    const eleId = element.id;
+                    const position = eleId.match(/-(.+)$/)[1];
+
+                    // reset position state
+                    element.classList.remove("positioned");
+                    element.querySelector("img").src = `./assets/heads/${position}.png`;
+
+                    // remove drop enter & drop over event
+                    element.ondragover = e => {
+                        e.preventDefault();
+                    };
+                    element.dragenter = e => {
+                        e.preventDefault();
+                    };
+
+                    // set drop event handler
+                    element.ondrop = e => {
+                        e.preventDefault();
+
+                        // set position
+                        const deviceId = e.dataTransfer.getData("text");
+                        cameraPositions[deviceId] = position;
+
+                        // get the unpositioned dom
+                        const unpositioned = document.querySelector(`img[device-id="${deviceId}"]`);
+
+                        // set image
+                        element.classList.add("positioned");
+                        element.querySelector("img").src = unpositioned.src;
+
+                        // delete this camera from unpositioned list
+                        document.querySelector("#unpositioned-camera-snaps").removeChild(unpositioned.parentNode);
+
+                        // check layout
+                        checkCurrentLayout();
+                    };
+                });
+            };
+
+            // checkout current layout
+            checkCurrentLayout = () => {
+                const layouts = {
+                    single: ["c"],
+                    horz3: ["c", "l1", "r1"],
+                    t4: ["c", "l1", "r1", "d1"],
+                    cross7: ["c", "l1", "l2", "r1", "r2", "u1", "d1"]
+                };
+
+                currentLayout = null;
+                for (let layout in layouts) {
+                    let positions = layouts[layout];
+                    if (Object.keys(cameraPositions).length !== positions.length) continue;
+                    let match = true;
+                    for (let deviceId in cameraPositions) {
+                        if (!positions.includes(cameraPositions[deviceId])) {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match) {
+                        currentLayout = layout;
+                        break;
+                    }
+                }
+
+                if (currentLayout) {
+                    document.querySelector(".current-layout").innerHTML = currentLayout;
+                    document.querySelector(".current-layout").classList.add("valid");
+                    document.querySelector("#finish-configuration").disabled = false;
+                } else {
+                    document.querySelector(".current-layout").innerHTML = "Invalid";
+                    document.querySelector(".current-layout").classList.remove("valid");
+                    document.querySelector("#finish-configuration").disabled = true;
+                }
+            };
+        </script>
+    </body>
+</html>
