@@ -91,6 +91,9 @@
                         <img class="oval green" src="assets/centering-oval-green.png" />
                     </div>
                     <div class="buttons">
+                        <input id="preview-resolution" type="checkbox" />
+                        <label for="preview-resolution">SD Resolution Preview (A token will be consumed)</label>
+                        <br />
                         <button id="toggle-preview" onclick="apiPreviewToggle();">Preview</button>
                         <button id="start-process" onclick="apiScanRecord();">Record</button>
                         <br />
@@ -337,8 +340,18 @@
                 showMessage("message", `processing buffer to produce head model...`);
                 showPage("process");
 
+                // set the preview resolution (default value is "LD")
+                const SDResolution = document.querySelector("#preview-resolution").checked;
+
                 // send request and upon response received, render the model
                 try {
+                    // if we want a model preview of SD resolution,
+                    // we need to call premium_features_enable before scan_process,
+                    // and a token will be deducted from the client account.
+                    if(SDResolution){
+                        await b3d4api.premiumFeaturesEnable();
+                    }
+
                     // to get a better scan result,
                     // if a Bellus3D dental bite plate is used during the scan, please
                     // include the dental bite plate ID in the scan_process Dev API request.
@@ -348,6 +361,7 @@
                     // Each labeled by an unique plate ID.
                     let { model, info } = await b3d4api.scanProcess(
                         scanId,
+                        SDResolution ? "SD" : "LD",
                         null // dental bite plate ID, if dental bite plate is used
                     );
                     // release the scan after model produced
@@ -377,9 +391,9 @@
 
                     await b3d4api.premiumFeaturesEnable();
 
-                    // VERY IMPORTANT NOTE:
-                    // this API is expecting an non-exist folder path, the API will always create that folder.
-                    // if an existing folder path is passed, to avoid any conflicting files,
+                    // IMPORTANT NOTE:
+                    // this API will always create the export folder.
+                    // if an existing folder path is passed, to avoid any file conflictions,
                     // the API will create a new folder with a suffix in the folder name.
                     let { model_file_path } = await b3d4api.modelSave(
                         scanId,

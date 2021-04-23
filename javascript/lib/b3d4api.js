@@ -523,7 +523,7 @@
         }
 
         // send 'scan_process' request, return a promise
-        scanProcess(scanId, dentalBitePlate = null, timeout = null) {
+        scanProcess(scanId, resolution = "LD", dentalBitePlate = null, timeout = null) {
             if (typeof scanId !== "string") {
                 return this._rejectAction("invalid scan id");
             }
@@ -532,6 +532,7 @@
                     request: "scan_process",
                     scan_id: scanId,
                     type: "HEADMODEL",
+                    resolution,
                     dental_bite_plate: dentalBitePlate
                 },
                 timeout
