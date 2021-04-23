@@ -483,13 +483,13 @@
         }
 
         // send 'preview_start' request, return a promise
-        previewStart(camera = "c", tracking = ["FACE"], timeout = null) {
+        previewStart(camera = "c", dimension = "408x544", tracking = ["FACE"], timeout = null) {
             return this.sendRequest(
                 {
                     request: "preview_start",
                     source: "COLOR",
                     format: "JPEG",
-                    dimension: "480x640",
+                    dimension,
                     camera,
                     frames: 0,
                     request_fps: 10,

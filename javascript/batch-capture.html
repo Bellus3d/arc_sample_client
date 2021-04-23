@@ -5,107 +5,80 @@
         <script src="lib/b3d4api.js"></script>
         <script src="lib/modelviewer.js"></script>
         <script src="config.js"></script>
+        <style>
+            #camera-u1,
+            #camera-d1 {
+                transform: none !important;
+            }
+            #camera-status li {
+                color: red;
+                text-align: left;
+            }
+            #camera-status li.connected {
+                color: green;
+            }
+            #camera-status li .position {
+                display: inline-block;
+                width: 20px;
+                margin: 0 10px 0;
+            }
+            #lists {
+                display: flex;
+            }
+            #lists > div {
+                margin: 0 5px;
+                border: 1px solid grey;
+                flex: 0 0 50%;
+            }
+            #buttons {
+                margin: 15px 0;
+                text-align: center;
+            }
+            #web-viewer {
+                border: 1px solid grey;
+                margin: 0 auto;
+            }
+            h1,h3{
+                margin: 10px auto;
+            }
+            #main{
+                width: 700px !important;
+                margin:0 auto !important;
+            }
+        </style>
     </head>
 
     <body>
         <div id="main">
-            <div class="page home process" id="home-page">
-                <div class="page process center">
-                    <h1>Processing</h1>
-                    <h3>system is processing the head model...</h3>
-                </div>
-                <div id="home" class="content">
-                    <h2 class="page home">Bellus3D ARC SDK Sample Scan App</h2>
-                    <h3 class="page home">Camera Status</h3>
-                    <div id="camera-status" class="camera-grid scan">
-                        <table>
-                            <tr>
-                                <td></td>
-                                <td></td>
-                                <td>
-                                    <span id="camera-u1"><img /></span>
-                                </td>
-                                <td></td>
-                                <td></td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <span id="camera-l2"><img /></span>
-                                </td>
-                                <td>
-                                    <span id="camera-l1"><img /></span>
-                                </td>
-                                <td>
-                                    <span id="camera-c"><img /></span>
-                                </td>
-                                <td>
-                                    <span id="camera-r1"><img /></span>
-                                </td>
-                                <td>
-                                    <span id="camera-r2"><img /></span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td></td>
-                                <td></td>
-                                <td>
-                                    <span id="camera-d1"><img /></span>
-                                </td>
-                                <td></td>
-                                <td></td>
-                            </tr>
-                        </table>
-                    </div>
-                    <div class="page home buttons">
-                        <button id="start-station" onclick="apiStationStart();">Start Station</button>
-                        <button id="refresh-cameras" onclick="apiCameraStatus();">Refresh Cameras</button>
-                        <br />
-                        <button id="start-preview" onclick="showPage('preview');" disabled>ARC 3D Face Scan</button>
-                    </div>
-                    <div class="page home vspacer"></div>
-                    <div class="page home note">
-                        <p>This sample app demonstrates the use of Bellus3D's ARC Developer's API (websocket):</p>
-                        <ul>
-                            <li>Preview Streaming</li>
-                            <li>Scan Recording and Processing</li>
-                            <li>View GLB Result</li>
-                            <li>Save Head Model Files</li>
+            <div class="page home">
+                <h1>arcX still mode batch capture sample app</h1>
+                <div id="lists">
+                    <div>
+                        <h3>camera connections</3>
+                        <ul id="camera-status">
+                            <li id="camera-c"><span class="position">c</span><span class="device-id"></span></li>
+                            <li id="camera-l1"><span class="position">l1</span><span class="device-id"></span></li>
+                            <li id="camera-l2"><span class="position">l2</span><span class="device-id"></span></li>
+                            <li id="camera-r1"><span class="position">r1</span><span class="device-id"></span></li>
+                            <li id="camera-r2"><span class="position">r2</span><span class="device-id"></span></li>
+                            <li id="camera-u1"><span class="position">u1</span><span class="device-id"></span></li>
+                            <li id="camera-d1"><span class="position">d1</span><span class="device-id"></span></li>
                         </ul>
                     </div>
-                </div>
-            </div>
-            <div class="page preview">
-                <div id="previewing" class="center">
-                    <h1>Preview Camera</h1>
-                    <h4>click "preview/pause" to start/stop camera streaming</h4>
-                    <h4>click "record" to start a scan</h4>
-                </div>
-                <div id="recording" class="hide center">
-                    <h1>Cameras are recording</h1>
-                    <h3>Please look at the camera and hold still for a few seconds...</h3>
-                </div>
-                <div id="preview-canvas">
-                    <div class="wrapper">
-                        <img class="canvas" width="240" height="320" />
-                        <img class="oval red" src="assets/centering-oval.png" />
-                        <img class="oval green" src="assets/centering-oval-green.png" />
-                    </div>
-                    <div class="buttons">
-                        <button id="toggle-preview" onclick="apiPreviewToggle();">Preview</button>
-                        <button id="start-process" onclick="apiScanRecord();">Record</button>
-                        <br />
-                        <button onclick="showPage('home');apiPreviewStop();">Cancel</button>
+                    <div>
+                        <h3>batch captures</h3>
+                        <ul id="scan-list"></ul>
                     </div>
                 </div>
-            </div>
-            <div class="page model">
-                <h1 class="center">Result</h1>
-                <div id="web-viewer"></div>
-                <div class="buttons">
-                    <button id="go-back-to-preview" onclick="showPage('preview');">Go Back</button>
-                    <button id="save-model" onclick="saveModel();">Save Model</button>
+                <div id="buttons">
+                    <button onclick="apiScanRecord();">new capture</button>
+                    <button onclick="apiStationStart(false);">start station</button>
+                    <button onclick="apiPreviewToggle();">toggle streaming</button>
+                    <button onclick="apiStationStart(true);">restart cameras</button>
                 </div>
             </div>
+            <h3>model viewer</h3>
+            <div id="web-viewer"></div>
             <div id="bottom">
                 <div id="notification">
                     <div class="content"></div>
@@ -159,18 +132,18 @@
 
                 // receive camera snap GLTF frames
                 b3d4api.onNotification("camera_snap", msg => {
-                    let { camera, frame, device_id } = msg;
-                    if (frame) {
-                        drawCameraSnapJpegBlob(camera, device_id, frame);
-                    } else {
-                        showMessage("error", `camera sensor busy. camera device_id "${device_id}"`);
-                    }
+                    // let { camera, frame, device_id } = msg;
+                    // if (frame) {
+                    //     drawCameraSnapJpegBlob(camera, device_id, frame);
+                    // } else {
+                    //     showMessage("error", `camera sensor busy. camera device_id "${device_id}"`);
+                    // }
                 });
 
                 // receive camera streaming GLTF frames
                 b3d4api.onNotification("camera_frame", msg => {
-                    let { camera, frame, tracking } = msg;
-                    drawCameraStreamingFrameJpegBlob(camera, frame, tracking);
+                    // let { camera, frame, tracking } = msg;
+                    // drawCameraStreamingFrameJpegBlob(camera, frame, tracking);
                 });
 
                 // receive camera status json notifications
@@ -181,7 +154,7 @@
                         if (connected) {
                             // highlight the newly connected camera and get a snapshot of it
                             document.querySelector(`#camera-${camera}`).classList.add("connected");
-                            apiCameraSnap(camera);
+                            document.querySelector(`#camera-${camera} .device-id`).innerHTML = device_id;
                         } else {
                             // grey out the disconnected camera
                             document.querySelector(`#camera-${camera}`).classList.remove("connected");
@@ -244,13 +217,13 @@
                 await b3d4api.cameraStatus();
             };
 
-            const apiStationStart = async () => {
+            const apiStationStart = async (restartCameras = false) => {
                 // note that the API station_start accepts an optional argument of "restart_cameras",
                 // the default value is false.
                 // if set to true, the API will force restart all camera clients,
                 // this is especially useful if the any cameras went into unexpected wrong status.
                 await b3d4api
-                    .stationStart(false)
+                    .stationStart(restartCameras)
                     .then(() => {
                         showMessage("message", `station is ready for a scan!`);
                     })
@@ -274,9 +247,9 @@
             const apiPreviewStart = async () => {
                 if (!isPreviewing) {
                     try {
-                        await b3d4api.previewStart("c", "408x544");
+                        await b3d4api.previewStart();
                         isPreviewing = true;
-                        document.querySelector("#toggle-preview").innerHTML = "Pause";
+                        // document.querySelector("#toggle-preview").innerHTML = "Pause";
                         // set a timeout for streaming
                         // to avoid letting the camera stay in streaming state
                         previewTimeout = window.setTimeout(() => {
@@ -299,7 +272,7 @@
                     try {
                         await b3d4api.previewStop();
                         isPreviewing = false;
-                        document.querySelector("#toggle-preview").innerHTML = "Preview";
+                        // document.querySelector("#toggle-preview").innerHTML = "Preview";
                     } catch (e) {
                         showMessage("error", `stop preview failed, message: ${parseError(e)}`, "ok", null, false);
                     }
@@ -314,19 +287,31 @@
                     "message",
                     `camera is recording, please hold still or move your head (following the instructions shown in our official ARC Scan App)...`
                 );
-                document.querySelector("#previewing").classList.add("hide");
-                document.querySelector("#recording").classList.remove("hide");
+                // document.querySelector("#previewing").classList.add("hide");
+                // document.querySelector("#recording").classList.remove("hide");
 
                 // send request and upon response received, automatically start recording
                 try {
                     let { scan_id } = await b3d4api.scanRecord("FACE"); // we use "FACE" mode here
                     currentScanId = scan_id;
                     let duration = ((new Date() - startTime) / 1000).toFixed(2);
-                    document.querySelector("#start-process").disabled = false;
+
+                    // document.querySelector("#start-process").disabled = false;
+
+                    // add current capture to the list...
+                    let listDom = document.querySelector("#scan-list");
+                    let li = document.createElement("li");
+                    li.id = `scan-${currentScanId}`;
+                    li.innerHTML = `
+                    <span class="scan-id">${currentScanId}</span>
+                    <button onclick="apiScanProcess('${currentScanId}').then(()=>this.innerHTML='DONE'); this.innerHTML='processing...';">process</button>
+                    `;
+                    listDom.appendChild(li);
+
                     showMessage("message", `record completed! Took ${duration} seconds.`, "ok", null, false);
 
                     // automatically start recording...
-                    await apiScanProcess(scan_id);
+                    // await apiScanProcess(scan_id);
                 } catch (e) {
                     showMessage("error", `record failed, message: ${parseError(e)}`, "ok", null, false);
                 }
@@ -335,7 +320,8 @@
             const apiScanProcess = async scanId => {
                 startTime = new Date();
                 showMessage("message", `processing buffer to produce head model...`);
-                showPage("process");
+
+                // showPage("process");
 
                 // send request and upon response received, render the model
                 try {
@@ -364,38 +350,11 @@
                         null,
                         false
                     );
-                    showPage("model");
+                    
+                    // showPage("model");
                     showModel(glb);
                 } catch (e) {
                     showMessage("error", `process scan failed, message: ${parseError(e)}`, "ok", null, false);
-                }
-            };
-
-            const apiModelSave = async (scanId, format, resolution, smoothing, path) => {
-                try {
-                    showMessage("message", `saving model, please wait...`, "ok", null, true);
-
-                    await b3d4api.premiumFeaturesEnable();
-
-                    // VERY IMPORTANT NOTE:
-                    // this API is expecting an non-exist folder path, the API will always create that folder.
-                    // if an existing folder path is passed, to avoid any conflicting files,
-                    // the API will create a new folder with a suffix in the folder name.
-                    let { model_file_path } = await b3d4api.modelSave(
-                        scanId,
-                        path, // if path is empty, Dev API will return a zip file in memory
-                        "headscan",
-                        format,
-                        resolution,
-                        smoothing,
-                        false, // watertight
-                        true, // face landmark
-                        true, // ear  landmark
-                        null // model orientation, available options are "yz", "zy", "zY", see documentation
-                    );
-                    showMessage("message", `Model file saved: ${model_file_path}`, "ok");
-                } catch (e) {
-                    showMessage("error", `saving head model failed, error: ${parseError(e)}`);
                 }
             };
         </script>
@@ -468,57 +427,6 @@
                 document.querySelector("#web-viewer").innerHTML = "";
                 window.webViewer.init("#web-viewer");
                 window.webViewer.showModel("glb", url, "", "");
-            };
-
-            // show camera snap frame
-            const drawCameraSnapJpegBlob = (camera, deviceId, frameBlob) => {
-                let url = URL.createObjectURL(frameBlob);
-
-                // if this frame comes with a camera position (in scan app)
-                if (camera) {
-                    document.querySelector(`#camera-${camera} img`).src = url;
-                }
-            };
-
-            // show camera stream frame
-            const drawCameraStreamingFrameJpegBlob = (camera, frameBlob, tracking) => {
-                // update streaming frame
-                let url = URL.createObjectURL(frameBlob);
-                document.querySelector(`#preview-canvas .canvas`).src = url;
-
-                // determine if head is in right position (fit in the oval)
-                let rightPosition = false;
-                if (tracking && tracking["FACE"]) {
-                    let range = window.config.tracking;
-                    let { facerect, distance } = tracking["FACE"];
-
-                    // check facerect if available
-                    if (facerect) {
-                        let { x, y, width, height } = facerect;
-                        let x1 = parseFloat(x);
-                        let y1 = parseFloat(y);
-                        let x2 = x1 + parseFloat(width);
-                        let y2 = y1 + parseFloat(height);
-                        if (x1 >= range.x[0] && x2 <= range.x[1] && y1 >= range.y[0] && y2 <= range.y[1]) {
-                            rightPosition = true;
-                        }
-                    }
-
-                    // check distance if available
-                    if (distance) {
-                        let { z } = distance;
-                        if (z < range.z[0] || z > range.z[1]) {
-                            rightPosition = false;
-                        }
-                    }
-                }
-
-                // update tracking oval
-                if (rightPosition) {
-                    document.querySelector("#preview-canvas .wrapper").classList.add("right-position");
-                } else {
-                    document.querySelector("#preview-canvas .wrapper").classList.remove("right-position");
-                }
             };
 
             const saveModel = () => {
