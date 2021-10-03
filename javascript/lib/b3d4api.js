@@ -523,7 +523,7 @@
         }
 
         // send 'scan_process' request, return a promise
-        scanProcess(scanId, resolution = "LD", dentalBitePlate = null, timeout = null) {
+        scanProcess(scanId, dentalBitePlate = null, timeout = null) {
             if (typeof scanId !== "string") {
                 return this._rejectAction("invalid scan id");
             }
@@ -532,7 +532,6 @@
                     request: "scan_process",
                     scan_id: scanId,
                     type: "HEADMODEL",
-                    resolution,
                     dental_bite_plate: dentalBitePlate
                 },
                 timeout
@@ -548,6 +547,21 @@
                 {
                     request: "scan_release",
                     scan_id: scanId
+                },
+                timeout
+            );
+        }
+
+        // send 'scan_preview' request, return a promise
+        scanPreview(scanId, resolution = "LD", timeout = null) {
+            if (typeof scanId !== "string") {
+                return this._rejectAction("invalid scan id");
+            }
+            return this.sendRequest(
+                {
+                    request: "scan_preview",
+                    scan_id: scanId,
+                    resolution
                 },
                 timeout
             );
@@ -624,6 +638,7 @@
             faceLandmark = false,
             earLandmark = false,
             modelOrientation = null,
+            photos = false,
             timeout = null
         ) {
             return this.sendRequest(
@@ -638,7 +653,8 @@
                     watertight,
                     face_landmark: faceLandmark,
                     ear_landmark: earLandmark,
-                    model_orientation: modelOrientation
+                    model_orientation: modelOrientation,
+                    photos
                 },
                 timeout
             );

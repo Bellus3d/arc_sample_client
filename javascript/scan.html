@@ -91,9 +91,6 @@
                         <img class="oval green" src="assets/centering-oval-green.png" />
                     </div>
                     <div class="buttons">
-                        <input id="preview-resolution" type="checkbox" />
-                        <label for="preview-resolution">SD Resolution Preview (A token will be consumed)</label>
-                        <br />
                         <button id="toggle-preview" onclick="apiPreviewToggle();">Preview</button>
                         <button id="start-process" onclick="apiScanRecord();">Record</button>
                         <br />
@@ -102,7 +99,12 @@
                 </div>
             </div>
             <div class="page model">
-                <h1 class="center">Result</h1>
+                <h1 class="center">Scan Preview</h1>
+                <div class="buttons">
+                    <button onclick="apiScanPreview(currentScanId, 'SD');">
+                        Show "SD" Resolution Preview (A token will be deducted)
+                    </button>
+                </div>
                 <div id="web-viewer"></div>
                 <div class="buttons">
                     <button id="go-back-to-preview" onclick="showPage('preview');">Go Back</button>
@@ -126,7 +128,7 @@
             window.onload = () => {
                 // show initial page
                 showPage("home");
-                showMessage("message", `connecting to '${window.config.host}'...`);
+                showMessage("message", `connecting to '${window.config.host}'...`, null, null, true);
                 // start dev api conversation
                 apiInit(window.config.host);
             };
@@ -153,7 +155,7 @@
                 // handle dev API connection events
                 b3d4api.onConnectionClose(event => {
                     let msg = `connection error: code ${event.code}`;
-                    showMessage("error", msg);
+                    showMessage("error", msg, null, null, true);
                 });
 
                 //
@@ -235,7 +237,7 @@
                         startPreviewButton.disabled = false;
                     }
                 } catch (e) {
-                    showMessage("error", `connection failed, message: ${parseError(e)}`, "ok", null, false);
+                    showMessage("error", `connection failed, message: ${parseError(e)}`, "ok", null, true);
                 }
             };
 
@@ -277,7 +279,7 @@
             const apiPreviewStart = async () => {
                 if (!isPreviewing) {
                     try {
-                        await b3d4api.previewStart("c", "408x544");
+                        await b3d4api.previewStart(null, "408x544");
                         isPreviewing = true;
                         document.querySelector("#toggle-preview").innerHTML = "Pause";
                         // set a timeout for streaming
@@ -300,7 +302,7 @@
                         previewTimeout = null;
                     }
                     try {
-                        await b3d4api.previewStop();
+                        await b3d4api.previewStop(null);
                         isPreviewing = false;
                         document.querySelector("#toggle-preview").innerHTML = "Preview";
                     } catch (e) {
@@ -322,9 +324,17 @@
 
                 // send request and upon response received, automatically start recording
                 try {
-                    let { scan_id } = await b3d4api.scanRecord("FACE"); // we use "FACE" mode here
+                    // by default, we use "FACE" scan mode in this sample app.
+                    // if you decide to try other scan modes e.g. "FULLHEAD",
+                    // please make sure you follow the required head motions during the capture.
+                    // please refer to the Bellus3D Scan App for capture motions.
+                    const scanMode = "FACE";
+                    //const scanMode = "FULLHEAD";
+                    let { scan_id } = await b3d4api.scanRecord(scanMode);
+
                     currentScanId = scan_id;
                     let duration = ((new Date() - startTime) / 1000).toFixed(2);
+
                     document.querySelector("#start-process").disabled = false;
                     showMessage("message", `record completed! Took ${duration} seconds.`, "ok", null, false);
 
@@ -340,37 +350,25 @@
                 showMessage("message", `processing buffer to produce head model...`);
                 showPage("process");
 
-                // set the preview resolution (default value is "LD")
-                const SDResolution = document.querySelector("#preview-resolution").checked;
-
                 // send request and upon response received, render the model
                 try {
-                    // if we want a model preview of SD resolution,
-                    // we need to call premium_features_enable before scan_process,
-                    // and a token will be deducted from the client account.
-                    if(SDResolution){
-                        await b3d4api.premiumFeaturesEnable();
-                    }
-
-                    // to get a better scan result,
+                    // to get a better scan result:
                     // if a Bellus3D dental bite plate is used during the scan, please
                     // include the dental bite plate ID in the scan_process Dev API request.
                     //
                     // Bellus3D dental bite plates are stored under /config/dental-bite-plates folder.
-                    // Also, b3d4api.dentalBitePlateList() will return a list of available plates,
-                    // Each labeled by an unique plate ID.
-                    let { model, info } = await b3d4api.scanProcess(
+                    // The "dental_bite_plate_list" API returns a list of available plates,
+                    // each labeled by an unique plate ID.
+                    await b3d4api.scanProcess(
                         scanId,
-                        SDResolution ? "SD" : "LD",
                         null // dental bite plate ID, if dental bite plate is used
                     );
+
                     // release the scan after model produced
                     await b3d4api.scanRelease(scanId);
 
-                    // show the result
+                    // go to the scan model preview page
                     let duration = ((new Date() - startTime) / 1000).toFixed(2);
-                    let { glb } = model;
-                    glb = new Blob([new Uint8Array(glb.data)]);
                     showMessage(
                         "message",
                         `head model processed successful! Took ${duration} seconds.`,
@@ -379,10 +377,34 @@
                         false
                     );
                     showPage("model");
-                    showModel(glb);
+
+                    // after processing, we request a 3D preview of "LD" resolution.
+
+                    // IMPORTANT NOTE:
+                    // currently, the "LD" preview is also included in the response of scan_process,
+                    // however, this is deprecating!
+                    // please send the "scan_preview" API to request the model preview right after scan_process.
+                    await apiScanPreview(scanId, "LD");
                 } catch (e) {
                     showMessage("error", `process scan failed, message: ${parseError(e)}`, "ok", null, false);
                 }
+            };
+
+            const apiScanPreview = async (scanId, resolution) => {
+                // if we want a model preview of SD resolution,
+                // we need to call premium_features_enable first,
+                // and a token will be deducted from the client account.
+                if (resolution === "SD") {
+                    await b3d4api.premiumFeaturesEnable();
+                }
+
+                let { model } = await b3d4api.scanPreview(scanId, resolution);
+
+                // show the scan preview
+                let { glb } = model;
+                glb = new Blob([new Uint8Array(glb.data)]);
+
+                showModel(glb);
             };
 
             const apiModelSave = async (scanId, format, resolution, smoothing, path) => {
@@ -405,7 +427,8 @@
                         false, // watertight
                         true, // face landmark
                         true, // ear  landmark
-                        null // model orientation, available options are "yz", "zy", "zY", see documentation
+                        null, // model orientation, available options are "yz", "zy", "zY", see documentation,
+                        true // export the preview photos of the scan
                     );
                     showMessage("message", `Model file saved: ${model_file_path}`, "ok");
                 } catch (e) {
