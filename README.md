@@ -10,7 +10,9 @@ To install ARC, double click on the ARC install and follow the steps.
 The host servers have to be running before openning the Sample App. To start the host server, locate `Bellus3D ARC Host.exe` in the ARC installer folder, excute `"Bellus3D ARC Host.exe" --action=start-host-and-wait`. Once the command exits with no error message, the host servers are up.
 
 ### Edit the Sample App configure file
-After we started the host, we'll also have to edit the `/javascript/config.js` file to fill in the SDK client credentials. Please find `client_id` and `client_secret` under the `crendentials` property.
+The Sample App connects to the host through the websocket DEV API server. The default server address is `ws://127.0.0.1:3003`, which is defined in `/javascript/config.js`. On the host side, you can choose to start the server with a different port, if that is the case, please make sure you update the port in the above address.
+
+A note for our previous developers: since version 1.16.x, SDK client credential authentication is not required anymore, so we removed the credential related fields in the config file.
 
 ## Run the ARC Sample Scan App
 This repo currently provides a set of Sample Apps writen in JavaScript. Based on different features, we have 3 different Sample Apps. All Sample Apps are designed to run out of box, no compilation required.

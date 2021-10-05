@@ -350,14 +350,11 @@
         }
 
         // send 'session_init' request, return a promise
-        sessionInit(credentials, timeout = null) {
+        sessionInit(timeout = null) {
             return this.sendRequest(
-                Object.assign(
-                    {
-                        request: "session_init"
-                    },
-                    credentials
-                ),
+                {
+                    request: "session_init"
+                },
                 timeout
             );
         }

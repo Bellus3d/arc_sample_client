@@ -181,7 +181,7 @@
                 //
                 try {
                     let { session_id } = await b3d4api.connect();
-                    let { client } = await b3d4api.sessionInit(window.config.credentials);
+                    let { client } = await b3d4api.sessionInit();
                     let { default_station_id } = await b3d4api.stationList();
                     // by default, when host service starts,
                     // the last configured station will be selected automatically

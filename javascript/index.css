@@ -151,7 +151,7 @@ button:disabled {
 }
 
 #notification.error .content .title::after {
-    content: "If the problem persists, please try restarting this page. Make sure your client credentials are correct, station is correctly configured through Configure App, and double check your USB physical connection to cameras.";
+    content: "If the problem persists, please try restarting this page. Make sure your station is correctly configured through Configure App, and double check your USB physical connection to cameras.";
     display: block;
     color: red;
     font-weight: bold;

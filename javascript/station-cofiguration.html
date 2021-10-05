@@ -167,7 +167,7 @@
                 // call session_init to init the SDK session
                 try {
                     let { session_id } = await b3d4api.connect();
-                    let { client } = await b3d4api.sessionInit(window.config.credentials);
+                    let { client } = await b3d4api.sessionInit();
 
                     // update UI
                     showMessage(
