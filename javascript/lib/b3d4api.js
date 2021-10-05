@@ -379,16 +379,6 @@
             );
         }
 
-        // send 'token_transactions' request, return a promise
-        tokenTransactions(timeout = null) {
-            return this.sendRequest(
-                {
-                    request: "token_transactions"
-                },
-                timeout
-            );
-        }
-
         // send 'premium_features_enable' request, return a promise
         premiumFeaturesEnable(timeout = null) {
             return this.sendRequest(

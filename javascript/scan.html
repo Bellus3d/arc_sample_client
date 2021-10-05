@@ -102,7 +102,7 @@
                 <h1 class="center">Scan Preview</h1>
                 <div class="buttons">
                     <button onclick="apiScanPreview(currentScanId, 'SD');">
-                        Show "SD" Resolution Preview (A token will be deducted)
+                        Show "SD" Resolution Preview
                     </button>
                 </div>
                 <div id="web-viewer"></div>
@@ -390,8 +390,10 @@
 
             const apiScanPreview = async (scanId, resolution) => {
                 // if we want a model preview of SD resolution,
-                // we need to call premium_features_enable first,
-                // and a token will be deducted from the client account.
+                // we need to call premium_features_enable first.
+                // note that since version 1.16.x, 
+                // we no longer deduct "SDK tokens" for using premium_features,
+                // but the API should still be called.
                 if (resolution === "SD") {
                     await b3d4api.premiumFeaturesEnable();
                 }
