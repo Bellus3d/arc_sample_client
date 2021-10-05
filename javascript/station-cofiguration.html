@@ -8,7 +8,8 @@
 
     <body>
         <div id="main">
-            <div class="page camera-list" id="camera-list-page">
+            <div class="page camera-list" id="camera-list-page" style="padding-top: 0;">
+                <h2>Bellus3D Station Configuration Sample App</h2>
                 <h3>Cameras connected on USB</h3>
                 <ul class="camera-list" id="camera-list"></ul>
                 <p>
@@ -26,8 +27,6 @@
                     </button>
                     <br />
                     <br />
-                    <button onclick="apiCameraRegistrationQuery();">Query Camera Registration</button>
-                    <button onclick="apiCameraRegistrationAdd();">Register Camera</button>
                     <button onclick="apiCameraUpdate();">Update Cameras</button>
                 </div>
             </div>
@@ -172,9 +171,7 @@
                     // update UI
                     showMessage(
                         "message",
-                        `connected!<br/>server: '${window.config.host}'<br/>session: '${session_id}'<br/>client: '${
-                            client ? client.client_name : "null"
-                        }'`,
+                        `connected!<br/>server: '${window.config.host}'<br/>session: '${session_id}'.`,
                         "ok",
                         null,
                         false
@@ -280,42 +277,6 @@
                     .catch(e => {
                         showMessage("error", `configure station failed, error: ${parseError(e)}.`, "ok", null, false);
                     });
-            };
-
-            const apiCameraRegistrationQuery = async () => {
-                // prompt to enter device ID
-                let deviceId = prompt("Enter camera Device ID:");
-
-                if (deviceId) {
-                    try {
-                        showMessage("message", `querying camera registration...`, null, null, true);
-                        let { camera_registration } = await b3d4api.cameraRegistrationQuery(deviceId);
-                        showMessage(
-                            "success",
-                            `camera registrion information for ${deviceId}: <hr/>${JSON.stringify(camera_registration)}`
-                        );
-                    } catch (e) {
-                        showMessage("error", `query camera registrion failed: <hr/>${parseError(e)}`);
-                    }
-                }
-            };
-
-            const apiCameraRegistrationAdd = async () => {
-                // prompt to enter device ID
-                let deviceId = prompt("Enter camera Device ID:");
-
-                if (deviceId) {
-                    try {
-                        showMessage("message", `registering camera...`, null, null, true);
-                        let { camera_registration } = await b3d4api.cameraRegistrationAdd(deviceId);
-                        showMessage(
-                            "success",
-                            `registered camera ${deviceId}: <hr/>${JSON.stringify(camera_registration)}`
-                        );
-                    } catch (e) {
-                        showMessage("error", `register camera failed: <hr/>${parseError(e)}`, null, null, false);
-                    }
-                }
             };
 
             const apiCameraUpdate = async () => {

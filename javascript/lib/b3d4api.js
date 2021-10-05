@@ -729,34 +729,6 @@
                 timeout
             );
         }
-
-        //
-        //
-        // camera-registration apis
-        //
-        //
-
-        // send "camera_registration_query", return a promise
-        cameraRegistrationQuery(deviceId, timeout = null) {
-            return this.sendRequest(
-                {
-                    request: "camera_registration_query",
-                    device_id: deviceId
-                },
-                timeout
-            );
-        }
-
-        // send "camera_registration_add", return a promise
-        cameraRegistrationAdd(deviceId, timeout = null) {
-            return this.sendRequest(
-                {
-                    request: "camera_registration_add",
-                    device_id: deviceId
-                },
-                timeout
-            );
-        }
     }
 
     // export this module
